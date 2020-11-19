@@ -34,7 +34,8 @@ namespace onmt
   static const int placeholder_alphabet = -2;
   static const int number_alphabet = -3;
 
-  Tokenizer::Mode Tokenizer::str_to_mode(const std::string& mode) {
+  Tokenizer::Mode Tokenizer::str_to_mode(const std::string& mode)
+  {
     if (mode == "conservative")
       return Mode::Conservative;
     if (mode == "aggressive")
@@ -284,7 +285,8 @@ namespace onmt
           prep_word = restore_token_casing(prep_word, token.casing);
 
         size_t p = prep_word.find(protected_character, 0);
-        while (p != std::string::npos && p+protected_character.size()+4 < prep_word.size()) {
+        while (p != std::string::npos && p+protected_character.size()+4 < prep_word.size())
+        {
           std::string code = prep_word.substr(p+protected_character.size(), 4);
           int v;
           if (sscanf(code.c_str(), "%x", &v) == 1)
@@ -624,53 +626,64 @@ namespace onmt
         const bool placeholder = state & State::Placeholder;
 
         const std::string& c = chars[i];
-        if (_options.support_prior_joiners && c == _options.joiner) {
+        if (_options.support_prior_joiners && c == _options.joiner)
+        {
           /* it is either after a space, in that case it annotates the following word,
              or a closed token (other & space), or a unclosed token - in that case it is a right joiner.
             */
-          if (other) {
+          if (other)
+          {
             tokens.back().join_right = true;
             continue;
           }
-          else if (space) {
+          else if (space)
+          {
             token.join_left = true;
             continue;
-          } else {
+          }
+          else
+          {
             token.join_right = true;
             flush_token(tokens, token);
             state = State::Space;
             continue;
           }
         }
+
         unicode::code_point_t v = code_points_main[i];
         unicode::code_point_t next_v = i + 1 < code_points_main.size() ? code_points_main[i + 1] : 0;
         bool is_separator = unicode::is_separator(v) && code_points_combining[i].size() == 0;
 
-        if (placeholder) {
-          if (v == ph_marker_close_cp) {
+        if (placeholder)
+        {
+          if (v == ph_marker_close_cp)
+          {
             token.append(c);
             if (_options.preserve_placeholders)
               token.preserve = true;
             prev_alphabet = placeholder_alphabet;
             state = State::Letter;
-          } else {
-            if (is_separator && !_options.no_substitution) {
+          }
+          else
+          {
+            if (is_separator && !_options.no_substitution)
               token.append(protected_character + int_to_hex(v));
-            } else {
+            else
               token.append(c);
-            }
           }
         }
-        else if (v == ph_marker_open_cp) {
-          if (!space) {
+        else if (v == ph_marker_open_cp)
+        {
+          if (!space)
+          {
             flush_token(tokens, token);
             if ((letter && prev_alphabet != placeholder_alphabet) || number)
               token.join_left = true;
             else
               tokens.back().join_right = true;
-          } else if (other && token.empty()) {
-            tokens.back().join_right = true;
           }
+          else if (other && token.empty())
+            tokens.back().join_right = true;
           token.append(c);
           state = State::Placeholder;
         }
@@ -920,7 +933,8 @@ namespace onmt
     return *this;
   }
 
-  void Tokenizer::unset_annotate() {
+  void Tokenizer::unset_annotate()
+  {
     _options.joiner_annotate = _options.spacer_annotate = false;
   }
 

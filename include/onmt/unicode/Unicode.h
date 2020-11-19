@@ -20,13 +20,6 @@ namespace onmt
                                               std::vector<std::string>& chars,
                                               std::vector<code_point_t>& code_points);
 
-    OPENNMTTOKENIZER_EXPORT void
-    explode_utf8_with_marks(const std::string& str,
-                            std::vector<std::string>& chars,
-                            std::vector<code_point_t>* code_points_main = nullptr,
-                            std::vector<std::vector<code_point_t>>* code_points_combining = nullptr,
-                            const std::vector<code_point_t>* protected_chars = nullptr);
-
     OPENNMTTOKENIZER_EXPORT size_t utf8len(const std::string& str);
 
     enum class CharType
@@ -88,6 +81,13 @@ namespace onmt
 
     OPENNMTTOKENIZER_EXPORT std::vector<std::string> split_utf8(const std::string& str,
                                                                 const std::string& sep);
+
+    OPENNMTTOKENIZER_EXPORT void
+    explode_utf8_with_marks(const std::string& str,
+                            std::vector<std::string>& chars,
+                            std::vector<code_point_t>* code_points_main = nullptr,
+                            std::vector<std::vector<code_point_t>>* code_points_combining = nullptr,
+                            const std::vector<code_point_t>* protected_chars = nullptr);
 
     inline void explode_utf8_with_marks(const std::string& str,
                                         std::vector<std::string>& chars,

@@ -133,11 +133,12 @@ namespace onmt
   std::vector<std::string> BPE::encode(const std::string& str) const
   {
     std::vector<std::string> chars;
+    std::vector<unicode::code_point_t> code_points;
 
     if (_case_insensitive)
-      unicode::explode_utf8_with_marks(lowercase_token(str).first, chars);
+      unicode::explode_utf8(lowercase_token(str).first, chars, code_points);
     else
-      unicode::explode_utf8_with_marks(str, chars);
+      unicode::explode_utf8(str, chars, code_points);
 
     if (chars.size() == 1)
     {

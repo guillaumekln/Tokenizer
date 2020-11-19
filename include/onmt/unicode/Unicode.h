@@ -50,6 +50,31 @@ namespace onmt
       None,
     };
 
+    struct OPENNMTTOKENIZER_EXPORT Char
+    {
+      std::string surface;
+      code_point_t value;
+      CharType char_type;
+      CaseType case_type;
+      std::vector<code_point_t> marks;
+
+      Char() = default;
+      Char(std::string surface_,
+           code_point_t value_,
+           CharType char_type_,
+           CaseType case_type_)
+        : surface(std::move(surface_))
+        , value(value_)
+        , char_type(char_type_)
+        , case_type(case_type_)
+      {
+      }
+    };
+
+    OPENNMTTOKENIZER_EXPORT std::vector<Char>
+    get_characters(const std::string& str,
+                   const std::vector<code_point_t>* protected_chars = nullptr);
+
     OPENNMTTOKENIZER_EXPORT CaseType get_case_v2(code_point_t u);
     OPENNMTTOKENIZER_EXPORT code_point_t get_upper(code_point_t u);
     OPENNMTTOKENIZER_EXPORT code_point_t get_lower(code_point_t u);

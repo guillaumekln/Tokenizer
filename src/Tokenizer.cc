@@ -499,19 +499,16 @@ namespace onmt
   void Tokenizer::tokenize_on_placeholders(const std::string& text,
                                            std::vector<Token>& tokens) const
   {
-    // Split on characters.
-    std::vector<std::string> chars;
-    std::vector<unicode::code_point_t> code_points_main;
-    std::vector<std::vector<unicode::code_point_t>> code_points_combining;
-    unicode::explode_utf8_with_marks(text, chars, code_points_main, code_points_combining);
+    const std::vector<unicode::Char> chars = unicode::get_characters(text);
 
     Token token;  // Accumulate characters in this.
     bool in_placeholder = false;
 
     for (size_t i = 0; i < chars.size(); ++i)
     {
-      const auto& c = chars[i];
-      const auto v = code_points_main[i];
+      const auto& character = chars[i];
+      const auto& c = character.surface;
+      const auto v = character.value;
 
       if (!in_placeholder)
       {
@@ -528,7 +525,7 @@ namespace onmt
           if (!token.empty())
           {
             // Flush accumulated token and mark joint if it did not finish by a separator.
-            if (i > 0 && !unicode::is_separator(code_points_main[i - 1]))
+            if (i > 0 && chars[i - 1].char_type != unicode::CharType::Separator)
               token.join_right = true;
             if (_options.preserve_segmented_tokens)
               token.preserve = true;
@@ -552,7 +549,7 @@ namespace onmt
           // Flush accumulated placeholder and mark joint if the next character is not a separator.
           // No need to check for emptiness as in_placeholder == true means at least the opening
           // character was accumulated.
-          if (i + 1 < chars.size() && !unicode::is_separator(code_points_main[i + 1]))
+          if (i + 1 < chars.size() && chars[i + 1].char_type != unicode::CharType::Separator)
             token.join_right = true;
           if (_options.preserve_placeholders || _options.preserve_segmented_tokens)
             token.preserve = true;
@@ -602,19 +599,7 @@ namespace onmt
     // TODO: this method has grown big and is hard to follow. It should be refactored into
     // smaller pieces to clarify its logic.
 
-    std::vector<std::string> chars;
-    std::vector<unicode::code_point_t> code_points_main;
-    std::vector<std::vector<unicode::code_point_t>> code_points_combining;
-    unicode::explode_utf8_with_marks(text,
-                                     chars,
-                                     &code_points_main,
-                                     &code_points_combining,
-                                     &exclude_combining);
-
-    std::vector<unicode::CharType> char_types;
-    char_types.reserve(code_points_main.size());
-    for (const auto code_point : code_points_main)
-      char_types.emplace_back(unicode::get_char_type(code_point));
+    const std::vector<unicode::Char> chars = unicode::get_characters(text, &exclude_combining);
 
     Token token;
     int state = State::Space;
@@ -628,7 +613,9 @@ namespace onmt
       const bool other = state & State::Other;
       const bool placeholder = state & State::Placeholder;
 
-      const std::string& c = chars[i];
+      const unicode::Char& character = chars[i];
+      const std::string& c = character.surface;
+
       if (_options.support_prior_joiners && c == _options.joiner)
       {
         /* it is either after a space, in that case it annotates the following word,
@@ -653,13 +640,13 @@ namespace onmt
         }
       }
 
-      const unicode::code_point_t v = code_points_main[i];
-      const unicode::CharType char_type = char_types[i];
-      const unicode::CharType next_char_type = (i + 1 < char_types.size()
-                                                ? char_types[i + 1]
+      const unicode::code_point_t v = character.value;
+      const unicode::CharType char_type = character.char_type;
+      const unicode::CharType next_char_type = (i + 1 < chars.size()
+                                                ? chars[i + 1].char_type
                                                 : unicode::CharType::Other);
       const bool is_separator = (char_type == unicode::CharType::Separator
-                                 && code_points_combining[i].empty());
+                                 && character.marks.empty());
 
       if (placeholder)
       {
@@ -757,9 +744,8 @@ namespace onmt
 
         if (is_letter && _options.mode != Mode::Char)
         {
-          const unicode::CaseType case_type = unicode::get_case_v2(v);
           const Casing new_casing = update_casing(token.casing,
-                                                  case_type,
+                                                  character.case_type,
                                                   token.unicode_length());
 
           bool segment_case = false;
@@ -784,7 +770,7 @@ namespace onmt
                 && (segment_case || segment_alphabet || segment_alphabet_change))
               token.preserve = true;
             flush_token(tokens, token);
-            token.casing = update_casing(token.casing, case_type, 0);
+            token.casing = update_casing(token.casing, character.case_type, 0);
           }
           else
           {

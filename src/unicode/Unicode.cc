@@ -93,42 +93,24 @@ namespace onmt
                                  std::vector<std::vector<code_point_t>>* code_points_combining,
                                  const std::vector<code_point_t>* protected_chars)
     {
-      const char* c_str = str.c_str();
+      std::vector<Char> char_info = get_characters(str, protected_chars);
 
-      chars.reserve(str.length());
+      const size_t num_chars = char_info.size();
+      chars.reserve(num_chars);
       if (code_points_main)
-        code_points_main->reserve(str.length());
+        code_points_main->reserve(num_chars);
       if (code_points_combining)
-        code_points_combining->reserve(str.length());
+        code_points_combining->reserve(num_chars);
 
-      while (*c_str)
+      for (Char& character : char_info)
       {
-        unsigned int char_size = 0;
-        code_point_t code_point = utf8_to_cp(
-          reinterpret_cast<const unsigned char*>(c_str), char_size);
-        if (chars.empty()
-            || !is_mark(code_point)
-            || (protected_chars
-                && std::find(protected_chars->begin(),
-                             protected_chars->end(),
-                             code_points_main->back()) != protected_chars->end()))
-        {
-          if (code_points_main)
-            code_points_main->emplace_back(code_point);
-          if (code_points_combining)
-            code_points_combining->emplace_back();
-          chars.emplace_back(c_str, char_size);
-        }
-        else
-        {
-          if (code_points_combining)
-            code_points_combining->back().push_back(code_point);
-          chars.back().append(c_str, char_size);
-        }
-        c_str += char_size;
+        chars.emplace_back(std::move(character.surface));
+        if (code_points_main)
+          code_points_main->emplace_back(character.value);
+        if (code_points_combining)
+          code_points_combining->emplace_back(std::move(character.marks));
       }
     }
-
 
     size_t utf8len(const std::string& str)
     {
@@ -139,9 +121,22 @@ namespace onmt
       return length;
     }
 
-    CharType get_char_type(code_point_t u)
+    static inline CaseType get_case_type(const int8_t category)
     {
-      switch (u_charType(u))
+      switch (category)
+      {
+      case U_LOWERCASE_LETTER:
+        return CaseType::Lower;
+      case U_UPPERCASE_LETTER:
+        return CaseType::Upper;
+      default:
+        return CaseType::None;
+      }
+    }
+
+    static inline CharType get_char_type(const int8_t category)
+    {
+      switch (category)
       {
       case U_SPACE_SEPARATOR:
       case U_LINE_SEPARATOR:
@@ -170,6 +165,11 @@ namespace onmt
       }
     }
 
+    CharType get_char_type(code_point_t u)
+    {
+      return get_char_type(u_charType(u));
+    }
+
     bool is_separator(code_point_t u)
     {
       return get_char_type(u) == CharType::Separator;
@@ -192,11 +192,7 @@ namespace onmt
 
     CaseType get_case_v2(code_point_t u)
     {
-      if (u_islower(u))
-        return CaseType::Lower;
-      if (u_isupper(u))
-        return CaseType::Upper;
-      return CaseType::None;
+      return get_case_type(u_charType(u));
     }
 
     code_point_t get_lower(code_point_t u)
@@ -207,6 +203,43 @@ namespace onmt
     code_point_t get_upper(code_point_t u)
     {
       return u_toupper(u);
+    }
+
+    std::vector<Char>
+    get_characters(const std::string& str,
+                   const std::vector<code_point_t>* protected_chars)
+    {
+      std::vector<Char> chars;
+      chars.reserve(str.size());
+
+      const char* c_str = str.c_str();
+      for (unsigned int char_size = 0; *c_str; c_str += char_size)
+      {
+        const auto code_point = utf8_to_cp(reinterpret_cast<const unsigned char*>(c_str),
+                                           char_size);
+        const auto category = u_charType(code_point);
+        const auto char_type = get_char_type(category);
+
+        if (chars.empty()
+            || char_type != CharType::Mark
+            || (protected_chars
+                && std::find(protected_chars->begin(),
+                             protected_chars->end(),
+                             chars.back().value) != protected_chars->end()))
+        {
+          chars.emplace_back(std::string(c_str, char_size),
+                             code_point,
+                             char_type,
+                             get_case_type(category));
+        }
+        else
+        {
+          chars.back().surface.append(c_str, char_size);
+          chars.back().marks.emplace_back(code_point);
+        }
+      }
+
+      return chars;
     }
 
     // The functions below are made backward compatible with the Kangxi and Kanbun script names

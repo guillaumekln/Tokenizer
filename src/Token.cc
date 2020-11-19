@@ -18,7 +18,7 @@ namespace onmt
   }
 
   void Token::lowercase() {
-    if (is_placeholder())
+    if (casing == Casing::Lowercase || is_placeholder())
       return;
     std::tie(surface, casing) = lowercase_token(surface);
   }

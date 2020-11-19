@@ -711,125 +711,123 @@ namespace onmt
 
           state = State::Space;
         }
+        else if (v < 32 || v == 0xFEFF)  // skip special characters and BOM
+          continue;
         else
         {
-          // skip special characters and BOM
-          if (v >= 32 && v != 0xFEFF)
+          const std::string& sub_c(_options.no_substitution ? c : normalize_character(c, v));
+          bool is_letter = unicode::is_letter(v);
+          bool is_number = !is_letter && unicode::is_number(v);
+          int alphabet = unicode::get_script(v);
+
+          if (alphabets != nullptr)
           {
-            const std::string& sub_c(_options.no_substitution ? c : normalize_character(c, v));
-            bool is_letter = unicode::is_letter(v);
-            bool is_number = !is_letter && unicode::is_number(v);
-            int alphabet = unicode::get_script(v);
+            const char* alphabet_name = nullptr;
+            if (is_letter && alphabet >= 0)
+              alphabet_name = unicode::get_script_name(alphabet);
+            else if (is_number)
+              alphabet_name = "Numeric";
+            else
+              alphabet_name = "Other";
 
-            if (alphabets != nullptr)
+            (*alphabets)[alphabet_name]++;
+          }
+
+          if (_options.mode == Mode::Conservative)
+          {
+            if (is_number
+                || (sub_c[0] == '-' && letter)
+                || (sub_c[0] == '_')
+                || (letter && (sub_c[0] == '.' || sub_c[0] == ',') && (unicode::is_number(next_v) || unicode::is_letter(next_v))))
             {
-              const char* alphabet_name = nullptr;
-              if (is_letter && alphabet >= 0)
-                alphabet_name = unicode::get_script_name(alphabet);
-              else if (is_number)
-                alphabet_name = "Numeric";
-              else
-                alphabet_name = "Other";
-
-              (*alphabets)[alphabet_name]++;
+              is_letter = true;
+              alphabet = number_alphabet;
             }
+          }
 
-            if (_options.mode == Mode::Conservative)
+          if (is_letter && _options.mode != Mode::Char)
+          {
+            const unicode::CaseType case_type = unicode::get_case_v2(v);
+            const Casing new_casing = update_casing(token.casing,
+                                                    case_type,
+                                                    token.unicode_length());
+
+            bool segment_case = false;
+            bool segment_alphabet = false;
+            bool segment_alphabet_change = false;
+            if ((!letter && !space)
+                || (letter
+                    && ((!_options.segment_alphabet_codes.empty()
+                         && (segment_alphabet = (
+                               alphabet >= 0
+                               && prev_alphabet == alphabet
+                               && (_options.segment_alphabet_codes.find(alphabet)
+                                   != _options.segment_alphabet_codes.end()))))
+                        || (_options.segment_alphabet_change
+                            && (segment_alphabet_change = (alphabet != prev_alphabet)))
+                        || (prev_alphabet == placeholder_alphabet)
+                        || (_options.segment_case
+                            && (segment_case = (new_casing == Casing::Mixed))))))
             {
-              if (is_number
-                  || (sub_c[0] == '-' && letter)
-                  || (sub_c[0] == '_')
-                  || (letter && (sub_c[0] == '.' || sub_c[0] == ',') && (unicode::is_number(next_v) || unicode::is_letter(next_v))))
-                {
-                  is_letter = true;
-                  alphabet = number_alphabet;
-                }
-            }
-
-            if (is_letter && _options.mode != Mode::Char)
-            {
-              const unicode::CaseType case_type = unicode::get_case_v2(v);
-              const Casing new_casing = update_casing(token.casing,
-                                                      case_type,
-                                                      token.unicode_length());
-
-              bool segment_case = false;
-              bool segment_alphabet = false;
-              bool segment_alphabet_change = false;
-              if ((!letter && !space)
-                  || (letter
-                      && ((!_options.segment_alphabet_codes.empty()
-                           && (segment_alphabet = (
-                                 alphabet >= 0
-                                 && prev_alphabet == alphabet
-                                 && (_options.segment_alphabet_codes.find(alphabet)
-                                     != _options.segment_alphabet_codes.end()))))
-                          || (_options.segment_alphabet_change
-                              && (segment_alphabet_change = (alphabet != prev_alphabet)))
-                          || (prev_alphabet == placeholder_alphabet)
-                          || (_options.segment_case
-                              && (segment_case = (new_casing == Casing::Mixed))))))
-              {
-                token.join_right = true;
-                if (_options.preserve_segmented_tokens
-                    && (segment_case || segment_alphabet || segment_alphabet_change))
-                  token.preserve = true;
-                flush_token(tokens, token);
-                token.casing = update_casing(token.casing, case_type, 0);
-              }
-              else
-              {
-                token.casing = new_casing;
-                if (other && token.empty())
-                  tokens.back().join_right = true;
-              }
-
-              token.append(sub_c);
-              state = State::Letter;
-              prev_alphabet = alphabet;
-            }
-            else if (is_number && _options.mode != Mode::Char)
-            {
-              const bool segment_number = (_options.segment_numbers && number);
-              if (letter || segment_number || (!number && !space))
-              {
-                if (_options.preserve_segmented_tokens && segment_number)
-                  token.preserve = true;
-                flush_token(tokens, token);
-                if (!letter || prev_alphabet == placeholder_alphabet)
-                  tokens.back().join_right = true;
-                else
-                  token.join_left = true;
-              }
-              else if (other)
-              {
-                tokens.back().join_right = true;
-              }
-
-              token.append(sub_c);
-              state = State::Number;
+              token.join_right = true;
+              if (_options.preserve_segmented_tokens
+                  && (segment_case || segment_alphabet || segment_alphabet_change))
+                token.preserve = true;
+              flush_token(tokens, token);
+              token.casing = update_casing(token.casing, case_type, 0);
             }
             else
             {
-              if (!space)
-              {
-                flush_token(tokens, token);
-                token.join_left = true;
-              }
-              else if (other)
-              {
-                token = Token();
-                token.join_left = true;
-              }
-
-              if (sub_c[0] == ' ' && !_options.no_substitution)
-                token.append(protected_character + int_to_hex(sub_c[0]) + sub_c.substr(1));
-              else
-                token.append(sub_c);
-
-              flush_token(tokens, token);
-              state = State::Other | State::Space;
+              token.casing = new_casing;
+              if (other && token.empty())
+                tokens.back().join_right = true;
             }
+
+            token.append(sub_c);
+            state = State::Letter;
+            prev_alphabet = alphabet;
+          }
+          else if (is_number && _options.mode != Mode::Char)
+          {
+            const bool segment_number = (_options.segment_numbers && number);
+            if (letter || segment_number || (!number && !space))
+            {
+              if (_options.preserve_segmented_tokens && segment_number)
+                token.preserve = true;
+              flush_token(tokens, token);
+              if (!letter || prev_alphabet == placeholder_alphabet)
+                tokens.back().join_right = true;
+              else
+                token.join_left = true;
+            }
+            else if (other)
+            {
+              tokens.back().join_right = true;
+            }
+
+            token.append(sub_c);
+            state = State::Number;
+          }
+          else
+          {
+            if (!space)
+            {
+              flush_token(tokens, token);
+              token.join_left = true;
+            }
+            else if (other)
+            {
+              token = Token();
+              token.join_left = true;
+            }
+
+            if (sub_c[0] == ' ' && !_options.no_substitution)
+              token.append(protected_character + int_to_hex(sub_c[0]) + sub_c.substr(1));
+            else
+              token.append(sub_c);
+
+            flush_token(tokens, token);
+            state = State::Other | State::Space;
           }
         }
       }

@@ -650,9 +650,9 @@ namespace onmt
           }
         }
 
-        unicode::code_point_t v = code_points_main[i];
-        unicode::code_point_t next_v = i + 1 < code_points_main.size() ? code_points_main[i + 1] : 0;
-        bool is_separator = unicode::is_separator(v) && code_points_combining[i].size() == 0;
+        const unicode::code_point_t v = code_points_main[i];
+        const unicode::code_point_t next_v = i + 1 < code_points_main.size() ? code_points_main[i + 1] : 0;
+        const bool is_separator = unicode::is_separator(v) && code_points_combining[i].size() == 0;
 
         if (placeholder)
         {

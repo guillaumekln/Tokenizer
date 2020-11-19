@@ -139,24 +139,55 @@ namespace onmt
       return length;
     }
 
+    CharType get_char_type(code_point_t u)
+    {
+      switch (u_charType(u))
+      {
+      case U_SPACE_SEPARATOR:
+      case U_LINE_SEPARATOR:
+      case U_PARAGRAPH_SEPARATOR:
+        return CharType::Separator;
+
+      case U_DECIMAL_DIGIT_NUMBER:
+      case U_LETTER_NUMBER:
+      case U_OTHER_NUMBER:
+        return CharType::Number;
+
+      case U_UPPERCASE_LETTER:
+      case U_LOWERCASE_LETTER:
+      case U_TITLECASE_LETTER:
+      case U_MODIFIER_LETTER:
+      case U_OTHER_LETTER:
+        return CharType::Letter;
+
+      case U_NON_SPACING_MARK:
+      case U_ENCLOSING_MARK:
+      case U_COMBINING_SPACING_MARK:
+        return CharType::Mark;
+
+      default:
+        return CharType::Other;
+      }
+    }
+
     bool is_separator(code_point_t u)
     {
-      return U_GET_GC_MASK(u) & U_GC_Z_MASK;
+      return get_char_type(u) == CharType::Separator;
     }
 
     bool is_letter(code_point_t u)
     {
-      return U_GET_GC_MASK(u) & U_GC_L_MASK;
+      return get_char_type(u) == CharType::Letter;
     }
 
     bool is_number(code_point_t u)
     {
-      return U_GET_GC_MASK(u) & U_GC_N_MASK;
+      return get_char_type(u) == CharType::Number;
     }
 
     bool is_mark(code_point_t u)
     {
-      return U_GET_GC_MASK(u) & U_GC_M_MASK;
+      return get_char_type(u) == CharType::Mark;
     }
 
     CaseType get_case_v2(code_point_t u)

@@ -606,12 +606,16 @@ namespace onmt
       std::vector<std::string> chars;
       std::vector<unicode::code_point_t> code_points_main;
       std::vector<std::vector<unicode::code_point_t>> code_points_combining;
-
       unicode::explode_utf8_with_marks(text,
                                        chars,
                                        &code_points_main,
                                        &code_points_combining,
                                        &exclude_combining);
+
+      std::vector<unicode::CharType> char_types;
+      char_types.reserve(code_points_main.size());
+      for (const auto code_point : code_points_main)
+        char_types.emplace_back(unicode::get_char_type(code_point));
 
       Token token;
       int state = State::Space;
@@ -651,8 +655,12 @@ namespace onmt
         }
 
         const unicode::code_point_t v = code_points_main[i];
-        const unicode::code_point_t next_v = i + 1 < code_points_main.size() ? code_points_main[i + 1] : 0;
-        const bool is_separator = unicode::is_separator(v) && code_points_combining[i].size() == 0;
+        const unicode::CharType char_type = char_types[i];
+        const unicode::CharType next_char_type = (i + 1 < char_types.size()
+                                                  ? char_types[i + 1]
+                                                  : unicode::CharType::Other);
+        const bool is_separator = (char_type == unicode::CharType::Separator
+                                   && code_points_combining[i].empty());
 
         if (placeholder)
         {
@@ -694,7 +702,7 @@ namespace onmt
 
           if (v == 0x200D) // Zero-Width joiner.
           {
-            if (other || (number && unicode::is_letter(next_v)))
+            if (other || (number && next_char_type == unicode::CharType::Letter))
               tokens.back().join_right = true;
             else
             {
@@ -705,7 +713,7 @@ namespace onmt
           else if (_options.with_separators)
           {
             token.append(c);
-            if (!unicode::is_separator(next_v))
+            if (next_char_type != unicode::CharType::Separator)
               flush_token(tokens, token);
           }
 
@@ -716,8 +724,8 @@ namespace onmt
         else
         {
           const std::string& sub_c(_options.no_substitution ? c : normalize_character(c, v));
-          bool is_letter = unicode::is_letter(v);
-          bool is_number = !is_letter && unicode::is_number(v);
+          bool is_letter = char_type == unicode::CharType::Letter;
+          bool is_number = char_type == unicode::CharType::Number;
           int alphabet = unicode::get_script(v);
 
           if (alphabets != nullptr)
@@ -738,7 +746,10 @@ namespace onmt
             if (is_number
                 || (sub_c[0] == '-' && letter)
                 || (sub_c[0] == '_')
-                || (letter && (sub_c[0] == '.' || sub_c[0] == ',') && (unicode::is_number(next_v) || unicode::is_letter(next_v))))
+                || (letter
+                    && (sub_c[0] == '.' || sub_c[0] == ',')
+                    && (next_char_type == unicode::CharType::Number
+                        || next_char_type == unicode::CharType::Letter)))
             {
               is_letter = true;
               alphabet = number_alphabet;

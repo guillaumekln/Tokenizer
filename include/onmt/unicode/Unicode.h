@@ -29,6 +29,16 @@ namespace onmt
 
     OPENNMTTOKENIZER_EXPORT size_t utf8len(const std::string& str);
 
+    enum class CharType
+    {
+      Separator,
+      Letter,
+      Number,
+      Mark,
+      Other,
+    };
+
+    OPENNMTTOKENIZER_EXPORT CharType get_char_type(code_point_t u);
     OPENNMTTOKENIZER_EXPORT bool is_separator(code_point_t u);
     OPENNMTTOKENIZER_EXPORT bool is_letter(code_point_t u);
     OPENNMTTOKENIZER_EXPORT bool is_number(code_point_t u);

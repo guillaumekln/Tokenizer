@@ -744,16 +744,18 @@ namespace onmt
               bool segment_alphabet = false;
               bool segment_alphabet_change = false;
               if ((!letter && !space)
-                  || (letter &&
-                      ((segment_alphabet = (prev_alphabet == alphabet
-                                            && alphabet >= 0
-                                            && (_options.segment_alphabet_codes.find(alphabet)
-                                                != _options.segment_alphabet_codes.end())))
-                       || (segment_alphabet_change = (prev_alphabet != alphabet
-                                                      && _options.segment_alphabet_change))
-                       || (prev_alphabet == placeholder_alphabet)
-                       || (_options.segment_case
-                           && (segment_case = (new_casing == Casing::Mixed))))))
+                  || (letter
+                      && ((!_options.segment_alphabet_codes.empty()
+                           && (segment_alphabet = (
+                                 alphabet >= 0
+                                 && prev_alphabet == alphabet
+                                 && (_options.segment_alphabet_codes.find(alphabet)
+                                     != _options.segment_alphabet_codes.end()))))
+                          || (_options.segment_alphabet_change
+                              && (segment_alphabet_change = (alphabet != prev_alphabet)))
+                          || (prev_alphabet == placeholder_alphabet)
+                          || (_options.segment_case
+                              && (segment_case = (new_casing == Casing::Mixed))))))
               {
                 token.join_right = true;
                 if (_options.preserve_segmented_tokens

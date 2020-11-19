@@ -777,9 +777,10 @@ namespace onmt
             }
             else if (is_number && _options.mode != Mode::Char)
             {
-              if (letter || (number && _options.segment_numbers) || (!number && !space))
+              const bool segment_number = (_options.segment_numbers && number);
+              if (letter || segment_number || (!number && !space))
               {
-                if (_options.preserve_segmented_tokens && number && _options.segment_numbers)
+                if (_options.preserve_segmented_tokens && segment_number)
                   token.preserve = true;
                 annotated_tokens.emplace_back(std::move(token));
                 token = Token();

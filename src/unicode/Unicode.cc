@@ -23,7 +23,7 @@ namespace onmt
       return str;
     }
 
-    code_point_t utf8_to_cp(const unsigned char* s, unsigned int &l)
+    static inline code_point_t utf8_to_cp_internal(const unsigned char* s, unsigned int &l)
     {
       // TODO: use ICU to implement this function.
       // This was previously done in https://github.com/OpenNMT/Tokenizer/commit/3d255ce3
@@ -62,6 +62,11 @@ namespace onmt
       return 0; // Incorrect unicode
     }
 
+    code_point_t utf8_to_cp(const unsigned char* s, unsigned int &l)
+    {
+      return utf8_to_cp_internal(s, l);
+    }
+
     std::vector<std::string> split_utf8(const std::string& str, const std::string& sep)
     {
       return split_string(str, sep);
@@ -79,7 +84,7 @@ namespace onmt
       while (*c_str)
       {
         unsigned int char_size = 0;
-        code_point_t code_point = utf8_to_cp(
+        code_point_t code_point = utf8_to_cp_internal(
           reinterpret_cast<const unsigned char*>(c_str), char_size);
         code_points.push_back(code_point);
         chars.emplace_back(c_str, char_size);
@@ -117,7 +122,7 @@ namespace onmt
       const auto* c_str = reinterpret_cast<const unsigned char*>(str.c_str());
       size_t length = 0;
       for (unsigned int char_size = 0; *c_str; ++length, c_str += char_size)
-        utf8_to_cp(c_str, char_size);
+        utf8_to_cp_internal(c_str, char_size);
       return length;
     }
 
@@ -215,8 +220,8 @@ namespace onmt
       const char* c_str = str.c_str();
       for (unsigned int char_size = 0; *c_str; c_str += char_size)
       {
-        const auto code_point = utf8_to_cp(reinterpret_cast<const unsigned char*>(c_str),
-                                           char_size);
+        const auto code_point = utf8_to_cp_internal(reinterpret_cast<const unsigned char*>(c_str),
+                                                    char_size);
         const auto category = u_charType(code_point);
         const auto char_type = get_char_type(category);
 

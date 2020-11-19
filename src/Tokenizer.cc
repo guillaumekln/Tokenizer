@@ -488,6 +488,12 @@ namespace onmt
       annotated_tokens = _subword_encoder->encode_and_annotate(annotated_tokens);
   }
 
+  static inline void flush_token(std::vector<Token>& tokens, Token& token)
+  {
+    tokens.emplace_back(std::move(token));
+    token = Token();
+  }
+
   void Tokenizer::tokenize_on_placeholders(const std::string& text,
                                            std::vector<Token>& tokens) const
   {
@@ -524,8 +530,7 @@ namespace onmt
               token.join_right = true;
             if (_options.preserve_segmented_tokens)
               token.preserve = true;
-            tokens.emplace_back(std::move(token));
-            token = Token();
+            flush_token(tokens, token);
           }
 
           token.append(c);
@@ -549,8 +554,7 @@ namespace onmt
             token.join_right = true;
           if (_options.preserve_placeholders || _options.preserve_segmented_tokens)
             token.preserve = true;
-          tokens.emplace_back(std::move(token));
-          token = Token();
+          flush_token(tokens, token);
           in_placeholder = false;
         }
       }
@@ -558,7 +562,7 @@ namespace onmt
 
     // Flush remaining token.
     if (!token.empty())
-      tokens.emplace_back(std::move(token));
+      flush_token(tokens, token);
   }
 
   void Tokenizer::tokenize_on_spaces(const std::string& text,
@@ -590,7 +594,7 @@ namespace onmt
   }
 
   void Tokenizer::tokenize_text(const std::string& text,
-                                std::vector<Token>& annotated_tokens,
+                                std::vector<Token>& tokens,
                                 std::unordered_map<std::string, size_t>* alphabets) const
   {
     // TODO: this method has grown big and is hard to follow. It should be refactored into
@@ -625,7 +629,7 @@ namespace onmt
              or a closed token (other & space), or a unclosed token - in that case it is a right joiner.
             */
           if (other) {
-            annotated_tokens.back().join_right = true;
+            tokens.back().join_right = true;
             continue;
           }
           else if (space) {
@@ -633,8 +637,7 @@ namespace onmt
             continue;
           } else {
             token.join_right = true;
-            annotated_tokens.emplace_back(std::move(token));
-            token = Token();
+            flush_token(tokens, token);
             state = State::Space;
             continue;
           }
@@ -660,14 +663,13 @@ namespace onmt
         }
         else if (v == ph_marker_open_cp) {
           if (!space) {
-            annotated_tokens.emplace_back(std::move(token));
-            token = Token();
+            flush_token(tokens, token);
             if ((letter && prev_alphabet != placeholder_alphabet) || number)
               token.join_left = true;
             else
-              annotated_tokens.back().join_right = true;
+              tokens.back().join_right = true;
           } else if (other && token.empty()) {
-            annotated_tokens.back().join_right = true;
+            tokens.back().join_right = true;
           }
           token.append(c);
           state = State::Placeholder;
@@ -675,15 +677,12 @@ namespace onmt
         else if (is_separator)
         {
           if (!space)
-          {
-            annotated_tokens.emplace_back(std::move(token));
-            token = Token();
-          }
+            flush_token(tokens, token);
 
           if (v == 0x200D) // Zero-Width joiner.
           {
             if (other || (number && unicode::is_letter(next_v)))
-              annotated_tokens.back().join_right = true;
+              tokens.back().join_right = true;
             else
             {
               token = Token();
@@ -694,10 +693,7 @@ namespace onmt
           {
             token.append(c);
             if (!unicode::is_separator(next_v))
-            {
-              annotated_tokens.emplace_back(std::move(token));
-              token = Token();
-            }
+              flush_token(tokens, token);
           }
 
           state = State::Space;
@@ -760,15 +756,14 @@ namespace onmt
                 if (_options.preserve_segmented_tokens
                     && (segment_case || segment_alphabet || segment_alphabet_change))
                   token.preserve = true;
-                annotated_tokens.emplace_back(std::move(token));
-                token = Token();
+                flush_token(tokens, token);
                 token.casing = update_casing(token.casing, case_type, 0);
               }
               else
               {
                 token.casing = new_casing;
                 if (other && token.empty())
-                  annotated_tokens.back().join_right = true;
+                  tokens.back().join_right = true;
               }
 
               token.append(sub_c);
@@ -782,16 +777,15 @@ namespace onmt
               {
                 if (_options.preserve_segmented_tokens && segment_number)
                   token.preserve = true;
-                annotated_tokens.emplace_back(std::move(token));
-                token = Token();
+                flush_token(tokens, token);
                 if (!letter || prev_alphabet == placeholder_alphabet)
-                  annotated_tokens.back().join_right = true;
+                  tokens.back().join_right = true;
                 else
                   token.join_left = true;
               }
               else if (other)
               {
-                annotated_tokens.back().join_right = true;
+                tokens.back().join_right = true;
               }
 
               token.append(sub_c);
@@ -801,8 +795,7 @@ namespace onmt
             {
               if (!space)
               {
-                annotated_tokens.emplace_back(std::move(token));
-                token = Token();
+                flush_token(tokens, token);
                 token.join_left = true;
               }
               else if (other)
@@ -816,8 +809,7 @@ namespace onmt
               else
                 token.append(sub_c);
 
-              annotated_tokens.emplace_back(std::move(token));
-              token = Token();
+              flush_token(tokens, token);
               state = State::Other | State::Space;
             }
           }
@@ -825,7 +817,7 @@ namespace onmt
       }
 
       if (!token.empty())
-        annotated_tokens.emplace_back(std::move(token));
+        flush_token(tokens, token);
     }
   }
 

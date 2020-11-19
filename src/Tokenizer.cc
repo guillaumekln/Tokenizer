@@ -723,10 +723,15 @@ namespace onmt
 
             if (alphabets != nullptr)
             {
-              if (alphabet >= 0 && is_letter)
-                (*alphabets)[unicode::get_script_name(alphabet)]++;
+              const char* alphabet_name = nullptr;
+              if (is_letter && alphabet >= 0)
+                alphabet_name = unicode::get_script_name(alphabet);
+              else if (is_number)
+                alphabet_name = "Numeric";
               else
-                (*alphabets)[is_number ? "Numeric" : "Other"]++;
+                alphabet_name = "Other";
+
+              (*alphabets)[alphabet_name]++;
             }
 
             if (_options.mode == Mode::Conservative)

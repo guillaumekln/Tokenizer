@@ -623,6 +623,10 @@ namespace onmt
 
       const unicode::Char& character = chars[i];
       const std::string& c = character.surface;
+      const unicode::code_point_t v = character.value;
+
+      if (v < 32 || v == 0xFEFF)  // skip special characters and BOM
+        continue;
 
       if (_options.support_prior_joiners && c == _options.joiner)
       {
@@ -648,7 +652,6 @@ namespace onmt
         }
       }
 
-      const unicode::code_point_t v = character.value;
       const unicode::CharType char_type = character.char_type;
       const unicode::CharType next_char_type = (i + 1 < chars.size()
                                                 ? chars[i + 1].char_type
@@ -713,8 +716,6 @@ namespace onmt
 
         state = State::Space;
       }
-      else if (v < 32 || v == 0xFEFF)  // skip special characters and BOM
-        continue;
       else
       {
         const std::string& sub_c(_options.no_substitution ? c : normalize_character(c, v));

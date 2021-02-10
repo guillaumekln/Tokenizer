@@ -21,6 +21,6 @@ pip install "cmake==3.18.*"
 rm -rf build
 mkdir build
 cd build
-cmake -DLIB_ONLY=ON ..
+cmake -DLIB_ONLY=ON -DCMAKE_INSTALL_PREFIX=$TOKENIZER_ROOT ..
 make -j2 install
 cd $ROOT_DIR

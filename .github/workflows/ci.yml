@@ -1,66 +1,67 @@
 name: CI
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - master
+on: push
+# on:
+#   push:
+#     branches:
+#       - master
+#     tags:
+#       - v*
+#   pull_request:
+#     branches:
+#       - master
 
 jobs:
-  build-and-test-cpp:
-    name: Build and test C++ library on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+#   build-and-test-cpp:
+#     name: Build and test C++ library on ${{ matrix.os }}
+#     runs-on: ${{ matrix.os }}
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         os: [ubuntu-latest, macos-latest]
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+#     steps:
+#       - uses: actions/checkout@v2
+#         with:
+#           submodules: recursive
 
-      - name: Build and install
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          cmake -DBUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=$PWD/install .
-          make install
+#       - name: Build and install
+#         if: startsWith(matrix.os, 'ubuntu')
+#         run: |
+#           cmake -DBUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=$PWD/install .
+#           make install
 
-      - name: Build and install
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          cmake -DBUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=$PWD/install \
-            -DICU_INCLUDE_DIR=/usr/local/opt/icu4c/include \
-            -DICU_LIBRARY=/usr/local/opt/icu4c/lib/libicuuc.dylib .
-          make install
+#       - name: Build and install
+#         if: startsWith(matrix.os, 'macos')
+#         run: |
+#           cmake -DBUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=$PWD/install \
+#             -DICU_INCLUDE_DIR=/usr/local/opt/icu4c/include \
+#             -DICU_LIBRARY=/usr/local/opt/icu4c/lib/libicuuc.dylib .
+#           make install
 
-      - name: Test
-        run: |
-          test/onmt_tokenizer_test test/data
+#       - name: Test
+#         run: |
+#           test/onmt_tokenizer_test test/data
 
 
-  build-cpp-windows:
-    name: Build C++ library on windows-latest
-    runs-on: windows-latest
+#   build-cpp-windows:
+#     name: Build C++ library on windows-latest
+#     runs-on: windows-latest
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+#     steps:
+#       - uses: actions/checkout@v2
+#         with:
+#           submodules: recursive
 
-      - name: Download ICU
-        run: |
-          C:\msys64\usr\bin\wget.exe -nv https://github.com/unicode-org/icu/releases/download/release-68-2/icu4c-68_2-Win64-MSVC2019.zip -O icu.zip
-          Expand-Archive -Force icu.zip ${{ github.workspace }}\icu
+#       - name: Download ICU
+#         run: |
+#           C:\msys64\usr\bin\wget.exe -nv https://github.com/unicode-org/icu/releases/download/release-68-2/icu4c-68_2-Win64-MSVC2019.zip -O icu.zip
+#           Expand-Archive -Force icu.zip ${{ github.workspace }}\icu
 
-      - name: Build and install
-        run: |
-          cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}\install -DICU_INCLUDE_DIRS=${{ github.workspace }}\icu\include -DICU_LIBRARIES=${{ github.workspace }}\icu\lib64\icuuc.lib .
-          cmake --build . --target install
+#       - name: Build and install
+#         run: |
+#           cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}\install -DICU_INCLUDE_DIRS=${{ github.workspace }}\icu\include -DICU_LIBRARIES=${{ github.workspace }}\icu\lib64\icuuc.lib .
+#           cmake --build . --target install
 
 
   build-and-test-python-wheels:
@@ -69,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [windows-latest]
 
     steps:
       - uses: actions/checkout@v2
@@ -82,7 +83,9 @@ jobs:
           package-dir: bindings/python
           output-dir: wheelhouse
         env:
+          TOKENIZER_ROOT: ${{ github.workspace }}/install
           CIBW_BEFORE_ALL: bindings/python/tools/prepare_build_environment.sh
+          CIBW_BEFORE_ALL_WINDOWS: bash bindings/python/tools/prepare_build_environment_windows.sh
           CIBW_BEFORE_BUILD: pip install pybind11==2.6.2
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
           CIBW_TEST_COMMAND: pytest {project}/bindings/python/test/test.py
@@ -97,20 +100,20 @@ jobs:
           path: wheelhouse
 
 
-  publish-python-wheels-on-pypi:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-    needs: [build-and-test-cpp, build-and-test-python-wheels]
-    runs-on: ubuntu-latest
+  # publish-python-wheels-on-pypi:
+  #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+  #   needs: [build-and-test-cpp, build-and-test-python-wheels]
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Download Python wheels
-        uses: actions/download-artifact@v2
-        with:
-          name: python-wheels
+  #   steps:
+  #     - name: Download Python wheels
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: python-wheels
 
-      - name: Publish Python wheels to PyPI
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
-          packages_dir: .
+  #     - name: Publish Python wheels to PyPI
+  #       uses: pypa/gh-action-pypi-publish@master
+  #       with:
+  #         user: ${{ secrets.PYPI_USERNAME }}
+  #         password: ${{ secrets.PYPI_PASSWORD }}
+  #         packages_dir: .

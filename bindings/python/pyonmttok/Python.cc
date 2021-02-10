@@ -9,6 +9,7 @@
 #include <onmt/SentencePiece.h>
 #include <onmt/BPELearner.h>
 #include <onmt/SentencePieceLearner.h>
+#include <onmt/unicode/Unicode.h>
 
 namespace py = pybind11;
 using namespace pybind11::literals;

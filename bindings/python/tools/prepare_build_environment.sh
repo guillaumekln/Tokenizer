@@ -21,6 +21,6 @@ pip install "cmake==3.18.*"
 rm -rf build
 mkdir build
 cd build
-cmake -DLIB_ONLY=ON ..
+cmake -DLIB_ONLY=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="-fPIC" ..
 make -j2 install
 cd $ROOT_DIR

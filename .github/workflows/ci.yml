@@ -1,14 +1,14 @@
 name: CI
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - master
+on: push
+  # push:
+  #   branches:
+  #     - master
+  #   tags:
+  #     - v*
+  # pull_request:
+  #   branches:
+  #     - master
 
 jobs:
   build-and-test-cpp:
@@ -81,6 +81,12 @@ jobs:
         with:
           python-version: 3.6
 
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: arm64
+
       - name: Build wheels
         uses: joerick/cibuildwheel@v1.10.0
         with:
@@ -90,9 +96,10 @@ jobs:
           CIBW_BEFORE_ALL: bindings/python/tools/prepare_build_environment.sh
           CIBW_BEFORE_BUILD: pip install pybind11==2.6.2
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux2014
           CIBW_TEST_COMMAND: pytest {project}/bindings/python/test/test.py
           CIBW_TEST_REQUIRES: pytest
-          CIBW_ARCHS: auto64
+          CIBW_ARCHS: auto64 aarch64
           CIBW_SKIP: pp*
 
       - name: Upload Python wheels
